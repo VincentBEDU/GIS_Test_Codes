@@ -33,6 +33,7 @@ library(ggspatial)
 #library(RColorBrewer)
 library(viridis)
 library(showtext) # to change font
+library(leaflet) # to create interactive map
 ```
 
 
@@ -176,4 +177,40 @@ ggsave(
   width = 7)
 
 ```
+
+# Create interactive map of the data
+
+```{r interactive_plot}
+color_palette <- colorNumeric(
+  palette = rev(viridisLite::viridis(20)),
+  domain = gii_map$gii_diff
+)
+
+map <- leaflet(data = gii_map) %>%
+  addTiles() %>%
+  addPolygons(
+    fillColor = ~color_palette(gii_diff),
+    fillOpacity = 1,
+    color = "white",
+    weight = 1,
+    highlight = highlightOptions(
+      weight = 5,
+      color = "white",
+      bringToFront = TRUE
+    ),
+    label = paste("Country: ", gii_map$COUNTRY, "GII Difference: ", gii_map$gii_diff)
+  ) %>%
+  addLegend("bottomright", 
+    pal = color_palette,
+    values = gii_map$gii_diff,
+    title = "GII Difference",
+    opacity = 0.7,
+    bins = 6,  # Set the number of legend bins (adjust as needed)
+    na.label = "No Data"  # Specify a label for missing data
+  )
+
+# Display the map
+map
+```
+
 
