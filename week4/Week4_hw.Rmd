@@ -1,0 +1,179 @@
+---
+title: "Week4_hw"
+author: Vincent BEDU
+output: html_document
+date: "2023-10-31"
+---
+
+# Readme
+
+Week 4 homework for CASA0005
+
+## Objectives
+1. Explain the use of and differences between Git and Github
+2. Create reproducible and open R code
+3. Produce RMarkdown documents that  explain codes and analysis
+
+## Outline of this work
+
+1. Loading of required packages
+2. Reading of data
+3. Joining and analysing data
+4. Map  using ggplot2 package
+5. save file and push to Github
+
+#  Load Packages
+
+```{r}
+library(tidyverse)
+library(readr)
+library(sf)
+library(countrycode)
+library(ggspatial)
+#library(RColorBrewer)
+library(viridis)
+library(showtext) # to change font
+```
+
+
+
+# Read Data
+
+Reproductivity for saving the data should be improved.
+
+```{r}
+# source: https://hub.arcgis.com/datasets/2b93b06dc0dc4e809d3c8db5cb96ba69_0/explore?location=-0.002619%2C0.000000%2C1.00
+world_map <- st_read("Data/World_Countries_Generalized.geojson")
+
+# source: https://hdr.undp.org/sites/default/files/2021-22_HDR/HDR21-22_Composite_indices_complete_time_series.csv
+gii_table <- read_csv("Data/HDR21-22_Composite_indices_complete_time_series.csv") %>%
+  dplyr::select(., iso3, country, contains("gii"))
+```
+
+
+# Data Analysis
+
+```{r}
+# Create ISO-2 character for merging with map data, and
+# calculate the difference between 2019 and 2010
+gii_table2 <- gii_table %>%
+  dplyr::mutate(
+    .,
+    iso2c = countrycode(iso3, origin = "iso3c", destination = "iso2c"),
+    .before = country
+  ) %>%
+  dplyr::mutate(
+    .,
+    gii_diff = gii_2019 - gii_2010,
+    .after = country
+  )
+
+# Join map data with statistics
+gii_map <- world_map %>%
+  left_join(
+    .,
+    gii_table2,
+    by = c("ISO" = "iso2c")
+  )
+```
+
+# Creating a map
+
+```{r}
+# add fonts
+font_add_google("Fira Sans")
+showtext_auto()
+
+# ggplot 
+plot <- 
+  ggplot(data = gii_map) +
+  geom_sf(
+    aes(fill = gii_diff, alpha = "No Data"), # add alpha to show 2nd legend for NA
+    color = "black",
+    lwd = 0.3
+  ) + 
+
+  # set title and caption
+  labs(
+    title = "Change in Gender Inequality between 2010 and 2019",
+    caption = "Source: UNDP Human Development Reports (https://hdr.undp.org/data-center/documentation-and-downloads)"
+  ) +
+
+  # change scale aesthetics
+  scale_fill_viridis(
+    option = "magma",
+    begin = 0,
+    end = 1,
+    name = "Difference in GII",
+    na.value = "white",
+    guide = guide_colorbar(
+      direction = "horizontal",
+      reverse = TRUE,
+      barwidth = 20,
+      barheight = 0.5,
+      title.position = "top",
+      title.hjust = 0.6,
+      label.position = "bottom",
+    )
+  ) + 
+  
+  # scale for no data
+  scale_alpha_manual(
+    name = " ",
+    values = 1,
+    guide = guide_legend(
+      keywidth = 3,
+      keyheight = 0.5,
+      title.position = "top",
+      label.position = "bottom",
+      override.aes = list(fill = "white")
+    )
+  ) +
+  
+  # aesthetics
+  theme(
+    plot.background = element_rect(fill = "lightcyan2", linewidth = 0),
+    panel.background = element_rect(fill = "lightcyan2"),
+    text = element_text(
+      color = "blue",
+      family = "Fira Sans"
+    ),
+    plot.title = element_text(
+      size = 20,
+      margin = margin(t = 10, b = 10),
+      hjust = 0.5
+    ),
+    legend.title = element_text(size = 15),
+    legend.position = "bottom",
+    legend.background = element_blank()
+  ) 
+
+plot
+```
+
+# Save Plot as image
+
+image modification before saving 
+
+```{r}
+# change the theme to save
+save <- plot + 
+  theme(
+    text = element_text(
+      size = 30,
+    ),
+    plot.title = element_text(
+      size = 50,
+    ),
+    legend.title = element_text(size = 30),
+  ) 
+  
+# save ggplot to image
+ggsave(
+  "Output/GII.png",
+  plot = save,
+  height = 7,
+  width = 7)
+
+```
+
